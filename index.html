@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PETUALANGAN ANEKDOT - Misi Menyelamatkan Negeri Anekdot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a202c;
+            color: #fff;
+            font-family: 'Nunito', sans-serif;
+            overflow: hidden;
+            touch-action: none; /* Prevent swipe-to-refresh on mobile */
+            user-select: none;
+        }
+
+        h1, h2, h3, .heading-font {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #0f172a;
+        }
+
+        /* 16:9 Aspect Ratio Enforcement */
+        #game-area {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 100vw;
+            max-height: 56.25vw; /* 16:9 aspect ratio max */
+            margin: auto;
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        @media (min-aspect-ratio: 16/9) {
+            #game-area {
+                height: 100vh;
+                width: 177.78vh; /* 16:9 aspect ratio max */
+            }
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Overlays */
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.9);
+            z-index: 20;
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Portrait Warning */
+        #portrait-warning {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #e11d48;
+            color: white;
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @media screen and (orientation: portrait) {
+            #portrait-warning {
+                display: flex;
+            }
+            #game-container {
+                display: none;
+            }
+        }
+
+        /* On-Screen Controls */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255,255,255,0.7);
+            border-radius: 50%;
+            font-size: 30px;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+            user-select: none;
+        }
+        .control-btn:active {
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(0.95);
+        }
+
+        .btn-action {
+            background: linear-gradient(180deg, #facc15 0%, #ca8a04 100%);
+            border: 2px solid #fef08a;
+            color: #451a03;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.2rem;
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
+            box-shadow: 0 4px 0 #854d0e, 0 8px 10px rgba(0,0,0,0.3);
+            transition: all 0.1s;
+        }
+        .btn-action:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 #854d0e, 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .panel-box {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 4px solid #3b82f6;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .answer-btn {
+            background: #334155;
+            border: 2px solid #475569;
+            color: white;
+            text-align: left;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            transition: background 0.2s;
+            cursor: pointer;
+            width: 100%;
+        }
+        .answer-btn:hover { background: #475569; }
+
+        /* Custom Scrollbar for panels */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px;}
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 4px; }
+        
+        #hud {
+            position: absolute;
+            top: 10px; left: 20px; right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            font-family: 'Fredoka One', cursive;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .creator-tag {
+            position: absolute;
+            bottom: 5px;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="portrait-warning">
+        <div class="text-6xl mb-4">🔄</div>
+        <h1 class="text-3xl font-bold mb-2">PUTAR HP ANDA</h1>
+        <p class="text-lg">Game ini dimainkan dalam mode LANDSCAPE (Miring).</p>
+    </div>
+
+    <div id="game-container">
+        <div id="game-area">
+            
+            <!-- HUD -->
+            <div id="hud" class="hidden">
+                <div class="text-xl text-red-500" id="lives-display">❤️❤️❤️</div>
+                <div class="text-center">
+                    <div class="text-2xl text-yellow-300" id="score-display">SKOR: 0</div>
+                    <div class="text-sm text-blue-200" id="level-display">LEVEL: 1 - Gerbang Anekdot</div>
+                </div>
+                <button onclick="pauseGame()" class="bg-gray-800 border-2 border-gray-600 rounded-full w-10 h-10 flex items-center justify-center text-white">⏸</button>
+            </div>
+
+            <!-- Canvas -->
+            <canvas id="gameCanvas"></canvas>
+
+            <!-- On-Screen Controls -->
+            <div id="controls" class="hidden">
+                <div class="flex gap-4">
+                    <div class="control-btn" id="btn-left">◀</div>
+                    <div class="control-btn" id="btn-right">▶</div>
+                </div>
+                <div>
+                    <div class="control-btn" style="width: 80px; height: 80px; background: rgba(239,68,68,0.5); border-color: #f87171;" id="btn-shoot">🎯</div>
+                </div>
+            </div>
+
+            <!-- MAIN MENU -->
+            <div id="menu-start" class="overlay">
+                <div class="panel-box p-8 max-w-lg w-full text-center">
+                    <h1 class="text-4xl text-yellow-400 mb-2">PETUALANGAN ANEKDOT</h1>
+                    <p class="text-blue-300 mb-6 font-bold">Misi Menyelamatkan Negeri Anekdot</p>
+                    
+                    <div class="flex flex-col gap-3 text-left mb-6">
+                        <input type="text" id="player-name" placeholder="Nama Pemain" class="p-3 rounded bg-slate-700 border border-slate-500 text-white w-full focus:outline-none focus:border-blue-400" required>
+                        <input type="text" id="player-class" placeholder="Kelas (Contoh: XI TKJ 1)" class="p-3 rounded bg-slate-700 border border-slate-500 text-white w-full focus:outline-none focus:border-blue-400">
+                        <input type="text" id="player-school" placeholder="Asal Sekolah" class="p-3 rounded bg-slate-700 border border-slate-500 text-white w-full focus:outline-none focus:border-blue-400">
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                        <button onclick="startGame()" class="btn-action w-full">▶ MULAI PETUALANGAN</button>
+                        <div class="flex gap-3">
+                            <button onclick="showInstructions()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded w-1/2">📖 PETUNJUK</button>
+                            <button onclick="showLeaderboard()" class="bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded w-1/2">🏆 SKOR</button>
+                        </div>
+                        <button onclick="toggleFullscreen()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded mt-2">⛶ FULLSCREEN</button>
+                    </div>
+                </div>
+                <div class="creator-tag">Game Edukasi Bahasa Indonesia Kelas XI SMK. Dibuat oleh: Dwi Harry Pambudi, M.Pd. - SMK Negeri 2 Songgom</div>
+            </div>
+
+            <!-- INSTRUCTIONS -->
+            <div id="menu-instructions" class="overlay hidden">
+                <div class="panel-box p-6 max-w-lg w-full">
+                    <h2 class="text-2xl text-yellow-400 text-center mb-4">📖 PETUNJUK BERMAIN</h2>
+                    <ul class="list-disc pl-5 space-y-2 text-sm text-slate-200">
+                        <li>Gunakan tombol ◀ dan ▶ untuk bergerak.</li>
+                        <li>Tekan 🎯 untuk menembak musuh yang datang.</li>
+                        <li>Setelah musuh terkena peluru, jawab pertanyaan seputar Teks Anekdot.</li>
+                        <li>Jawaban <span class="text-green-400 font-bold">BENAR</span>: Musuh kalah, +100 Poin.</li>
+                        <li>Jawaban <span class="text-red-400 font-bold">SALAH</span>: Nyawa berkurang 1.</li>
+                        <li>Selesaikan 5 Level dan kalahkan <span class="text-purple-400 font-bold">BOSS RAJA ANEKDOT</span> di level terakhir!</li>
+                    </ul>
+                    <button onclick="hideInstructions()" class="btn-action w-full mt-6">KEMBALI</button>
+                </div>
+            </div>
+
+            <!-- QUESTION PANEL -->
+            <div id="menu-question" class="overlay hidden">
+                <div class="panel-box p-6 max-w-2xl w-full text-slate-100 relative">
+                    <div class="absolute -top-4 -right-4 bg-yellow-500 text-black font-bold rounded-full w-12 h-12 flex items-center justify-center border-4 border-slate-800 text-xl" id="q-timer">⏳</div>
+                    <h2 class="text-xl text-yellow-300 mb-2 border-b border-slate-600 pb-2 heading-font">PERTANYAAN ANEKDOT</h2>
+                    <div id="q-passage" class="bg-slate-800 p-3 rounded mb-3 text-sm italic border-l-4 border-blue-500 hidden"></div>
+                    <p id="q-text" class="text-lg mb-4 font-semibold"></p>
+                    <div id="q-options" class="flex flex-col gap-2">
+                        <!-- Options injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- EXPLANATION PANEL -->
+            <div id="menu-explanation" class="overlay hidden">
+                <div class="panel-box p-6 max-w-lg w-full text-center">
+                    <h2 id="exp-title" class="text-3xl mb-2 heading-font">🎯 TEPAT!</h2>
+                    <p id="exp-subtitle" class="text-sm text-slate-300 mb-4">Musuh berhasil dikalahkan!</p>
+                    <div class="bg-slate-800 p-4 rounded text-left mb-6 text-sm">
+                        <span class="text-yellow-400 font-bold block mb-1">Pembahasan:</span>
+                        <span id="exp-text"></span>
+                    </div>
+                    <button onclick="resumeAfterQuestion()" class="btn-action w-full">LANJUTKAN</button>
+                </div>
+            </div>
+
+            <!-- PAUSE MENU -->
+            <div id="menu-pause" class="overlay hidden">
+                <div class="panel-box p-6 max-w-xs w-full text-center">
+                    <h2 class="text-3xl text-yellow-400 mb-6 heading-font">PAUSED</h2>
+                    <div class="flex flex-col gap-4">
+                        <button onclick="resumeGame()" class="btn-action">LANJUTKAN</button>
+                        <button onclick="returnToMain()" class="bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded">KELUAR</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GAME OVER / VICTORY -->
+            <div id="menu-result" class="overlay hidden">
+                <div class="panel-box p-6 max-w-md w-full text-center">
+                    <h2 id="res-title" class="text-4xl text-yellow-400 mb-2 heading-font">GAME OVER</h2>
+                    <p id="res-subtitle" class="text-lg text-slate-300 mb-4">Jangan menyerah, pahlawan!</p>
+                    
+                    <div class="bg-slate-800 p-4 rounded text-left mb-6 space-y-2 text-sm">
+                        <p>👤 Nama: <span id="res-name" class="font-bold text-white"></span></p>
+                        <p>⭐ Skor Akhir: <span id="res-score" class="font-bold text-yellow-400"></span></p>
+                        <p>🏆 Gelar: <span id="res-title-rank" class="font-bold text-green-400"></span></p>
+                        <p>📈 Level Terakhir: <span id="res-level"></span></p>
+                        <p>✅ Benar: <span id="res-correct" class="text-green-400"></span> | ❌ Salah: <span id="res-wrong" class="text-red-400"></span></p>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button onclick="resetGame()" class="btn-action w-1/2">🔄 MAIN LAGI</button>
+                        <button onclick="returnToMain()" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded w-1/2">MENU UTAMA</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LEADERBOARD -->
+            <div id="menu-leaderboard" class="overlay hidden">
+                <div class="panel-box p-6 max-w-md w-full">
+                    <h2 class="text-2xl text-yellow-400 text-center mb-4 heading-font">🏆 PAPAN SKOR TOP 10</h2>
+                    <div id="leaderboard-list" class="bg-slate-800 rounded p-2 mb-4 h-64 overflow-y-auto text-sm">
+                        <!-- Scores injected here -->
+                    </div>
+                    <button onclick="hideLeaderboard()" class="btn-action w-full">KEMBALI</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- GAME STATE ---
+        const STATE = {
+            MENU: 0,
+            PLAYING: 1,
+            PAUSED: 2,
+            QUESTION: 3,
+            EXPLANATION: 4,
+            GAMEOVER: 5
+        };
+        let currentState = STATE.MENU;
+        
+        let playerInfo = { name: '', class: '', school: '' };
+        let stats = { score: 0, lives: 3, level: 1, correct: 0, wrong: 0 };
+        
+        // --- CANVAS SETUP ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Internal resolution for consistency
+        const GW = 1280;
+        const GH = 720;
+        
+        function resizeCanvas() {
+            canvas.width = GW;
+            canvas.height = GH;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- AUDIO SYSTEM (Web Audio API) ---
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playTone(freq, type, duration, vol=0.1) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const sfx = {
+            shoot: () => playTone(800, 'square', 0.1, 0.05),
+            hit: () => playTone(150, 'sawtooth', 0.2, 0.1),
+            correct: () => { playTone(600, 'sine', 0.1, 0.1); setTimeout(()=>playTone(800, 'sine', 0.2, 0.1), 100); },
+            wrong: () => { playTone(300, 'sawtooth', 0.2, 0.1); setTimeout(()=>playTone(200, 'sawtooth', 0.3, 0.1), 150); },
+            levelUp: () => { playTone(400, 'sine', 0.1, 0.1); setTimeout(()=>playTone(500, 'sine', 0.1, 0.1), 100); setTimeout(()=>playTone(600, 'sine', 0.3, 0.1), 200); },
+            gameOver: () => { playTone(200, 'sawtooth', 0.5, 0.1); setTimeout(()=>playTone(150, 'sawtooth', 0.8, 0.1), 400); }
+        };
+
+        const questionBank = [
+            {
+                q: "Apa yang dimaksud dengan teks anekdot?",
+                p: "",
+                opt: [
+                    "A. Cerita rakyat yang mengandung mitos dan legenda.",
+                    "B. Cerita lucu/menggelitik yang mengandung kritikan.",
+                    "C. Laporan perjalanan yang disusun secara sistematis.",
+                    "D. Teks yang berisi langkah-langkah melakukan sesuatu.",
+                    "E. Karangan fiksi ilmiah tentang masa depan."
+                ],
+                ans: 1,
+                exp: "Teks anekdot adalah cerita singkat yang menarik karena lucu dan mengesankan, biasanya mengenai orang penting berdasarkan kejadian nyata yang bertujuan untuk mengkritik/menyindir."
+            },
+            {
+                q: "Tujuan utama dari penulisan teks anekdot adalah...",
+                p: "",
+                opt: [
+                    "A. Memberikan hiburan semata kepada pembaca.",
+                    "B. Menyampaikan informasi faktual secara detail.",
+                    "C. Menyampaikan kritik atau sindiran secara halus melalui humor.",
+                    "D. Mendeskripsikan keindahan alam suatu tempat.",
+                    "E. Mengajak pembaca untuk membeli suatu produk."
+                ],
+                ans: 2,
+                exp: "Anekdot tidak hanya bertujuan untuk menghibur, tetapi fungsi utamanya adalah menyampaikan pesan moral, kritik, atau sindiran secara halus agar tidak menyinggung."
+            },
+            {
+                q: "Struktur teks anekdot yang berfungsi memberikan gambaran umum tentang isi teks adalah...",
+                p: "",
+                opt: ["A. Abstraksi", "B. Orientasi", "C. Krisis", "D. Reaksi", "E. Koda"],
+                ans: 0,
+                exp: "Abstraksi adalah bagian di awal paragraf yang berfungsi memberi gambaran tentang isi teks. Biasanya menunjukkan hal unik yang akan ada di dalam teks."
+            },
+            {
+                q: "Bagian yang menunjukkan awal mula cerita atau latar belakang peristiwa dalam anekdot disebut...",
+                p: "",
+                opt: ["A. Abstraksi", "B. Orientasi", "C. Krisis", "D. Reaksi", "E. Koda"],
+                ans: 1,
+                exp: "Orientasi adalah bagian yang menunjukkan awal kejadian cerita atau latar belakang bagaimana peristiwa tersebut terjadi."
+            },
+            {
+                q: "Puncak masalah atau hal unik dan lucu dalam teks anekdot terdapat pada bagian...",
+                p: "",
+                opt: ["A. Abstraksi", "B. Orientasi", "C. Krisis", "D. Reaksi", "E. Koda"],
+                ans: 2,
+                exp: "Krisis (komplikasi) adalah bagian dimana terjadi hal yang tidak biasa, masalah, atau kekonyolan yang menjadi inti dari kritik/sindiran."
+            },
+            {
+                q: "Bagaimana cara penyelesaian masalah yang timbul di bagian krisis terdapat pada struktur...",
+                p: "",
+                opt: ["A. Abstraksi", "B. Orientasi", "C. Krisis", "D. Reaksi", "E. Koda"],
+                ans: 3,
+                exp: "Reaksi adalah tanggapan, respons, atau cara menyelesaikan masalah yang timbul di bagian krisis. Di sinilah sering muncul unsur tawa."
+            },
+            {
+                q: "Bagian penutup dalam teks anekdot yang bisa berisi simpulan, persetujuan, atau pesan moral disebut...",
+                p: "",
+                opt: ["A. Abstraksi", "B. Orientasi", "C. Krisis", "D. Reaksi", "E. Koda"],
+                ans: 4,
+                exp: "Koda adalah bagian penutup. Terkadang koda bersifat opsional (bisa ada atau tidak) dan biasanya berisi kesimpulan atau penegasan pesan."
+            },
+            {
+                q: "Kritik yang tersirat dalam kutipan tersebut adalah...",
+                p: "\"Pak, mengapa rapat tentang kedisiplinan selalu dimulai terlambat?\" tanya seorang siswa.\n\"Karena kami ingin memberi contoh bahwa keterlambatan itu harus dimaklumi,\" jawab guru sambil tersenyum.",
+                opt: [
+                    "A. Guru tidak suka mengikuti rapat.",
+                    "B. Rapat sekolah selalu membosankan.",
+                    "C. Terdapat ketidaksesuaian antara aturan kedisiplinan dan pelaksanaannya.",
+                    "D. Siswa tidak memahami arti kedisiplinan.",
+                    "E. Guru ingin segera membatalkan rapat."
+                ],
+                ans: 2,
+                exp: "Teks tersebut menyindir ironi dimana pihak yang seharusnya menegakkan aturan kedisiplinan justru melanggar aturan tersebut (memulai rapat terlambat)."
+            },
+            {
+                q: "Makna sindiran dari anekdot di atas adalah...",
+                p: "Seorang pejabat berkata kepada anaknya, \"Nak, kalau kamu mau sukses, belajarlah memotong kompas. Lihat Ayah, cukup potong sedikit anggaran proyek, sukses kan?\"",
+                opt: [
+                    "A. Pentingnya belajar navigasi dan arah.",
+                    "B. Pejabat yang bangga mengajarkan tindakan korupsi kepada anaknya.",
+                    "C. Kesuksesan hanya bisa diraih dengan bekerja keras di proyek.",
+                    "D. Hubungan harmonis antara ayah dan anak.",
+                    "E. Keterampilan menggunakan kompas dalam kehidupan nyata."
+                ],
+                ans: 1,
+                exp: "Ungkapan 'memotong kompas' dan 'memotong anggaran' menyindir keras perilaku pejabat yang melakukan korupsi dan menormalisasi tindakan tersebut."
+            },
+            {
+                q: "Pertanyaan yang tidak membutuhkan jawaban karena jawabannya sudah jelas atau sekadar untuk menyindir disebut...",
+                p: "",
+                opt: [
+                    "A. Pertanyaan literal",
+                    "B. Pertanyaan terbuka",
+                    "C. Pertanyaan retoris",
+                    "D. Pertanyaan tertutup",
+                    "E. Pertanyaan dasar"
+                ],
+                ans: 2,
+                exp: "Pertanyaan retoris adalah salah satu ciri kebahasaan teks anekdot, digunakan untuk menguatkan gagasan atau memberikan sindiran tanpa mengharapkan jawaban nyata."
+            },
+            {
+                q: "Kata kerja yang menunjukkan aktivitas fisik atau tindakan yang dapat dilihat (seperti berjalan, mengambil, memukul) disebut...",
+                p: "",
+                opt: [
+                    "A. Kata kerja mental",
+                    "B. Kata kerja material",
+                    "C. Kata kerja relasional",
+                    "D. Kata kerja imperatif",
+                    "E. Kata kerja pasif"
+                ],
+                ans: 1,
+                exp: "Kata kerja material menunjukkan tindakan atau perbuatan fisik. Ciri ini sering muncul dalam teks anekdot untuk menceritakan urutan kejadian."
+            },
+            {
+                q: "Konjungsi yang berfungsi menghubungkan urutan waktu kejadian dalam teks anekdot disebut...",
+                p: "",
+                opt: [
+                    "A. Konjungsi kausalitas",
+                    "B. Konjungsi syarat",
+                    "C. Konjungsi temporal",
+                    "D. Konjungsi tujuan",
+                    "E. Konjungsi pertentangan"
+                ],
+                ans: 2,
+                exp: "Konjungsi temporal (seperti: kemudian, lalu, setelah itu, akhirnya) digunakan untuk menyusun urutan peristiwa (kronologis) dalam teks anekdot."
+            },
+            {
+                q: "Apa perbedaan paling mendasar antara teks anekdot dengan cerita humor biasa?",
+                p: "",
+                opt: [
+                    "A. Anekdot bentuknya panjang, humor bentuknya pendek.",
+                    "B. Anekdot memiliki pesan moral/kritik sosial, humor hanya untuk menghibur.",
+                    "C. Anekdot menggunakan bahasa baku, humor menggunakan bahasa gaul.",
+                    "D. Anekdot tidak memiliki struktur, humor strukturnya jelas.",
+                    "E. Anekdot berisi fiksi murni, humor berisi kisah nyata."
+                ],
+                ans: 1,
+                exp: "Perbedaan utama terletak pada fungsi/tujuannya. Anekdot digunakan untuk menyindir/mengkritik dengan balutan komedi, sedangkan humor murni hanya untuk memancing tawa."
+            },
+            {
+                q: "Bagian kutipan tersebut termasuk dalam struktur...",
+                p: "Hakim: \"Anda terbukti mencuri sendal jepit, dihukum 5 tahun penjara.\"\nTerdakwa: \"Lho, koruptor yang curi miliaran kok cuma dihukum 2 tahun?\"\nHakim: \"Karena dia merugikan negara, negara kaya. Anda merugikan orang miskin, kasihan dia!\"",
+                opt: ["A. Abstraksi", "B. Orientasi", "C. Krisis", "D. Koda", "E. Reaksi"],
+                ans: 2,
+                exp: "Percakapan tersebut merupakan inti masalah (krisis) yang mengandung kekonyolan logika hukum yang tidak adil (sindiran)."
+            },
+            {
+                q: "Maksud dari hukum 'tajam ke bawah tumpul ke atas' yang sering disindir dalam anekdot adalah...",
+                p: "",
+                opt: [
+                    "A. Pisau hukum harus diasah.",
+                    "B. Hukum bertindak tegas pada rakyat kecil, namun lemah terhadap pejabat/orang kaya.",
+                    "C. Hukum selalu memihak pada kebenaran.",
+                    "D. Rakyat kecil selalu kebal hukum.",
+                    "E. Pemimpin negara tidak bisa dihukum."
+                ],
+                ans: 1,
+                exp: "Ini adalah metafora umum dalam kritik sosial (sering jadi tema anekdot) yang menggambarkan ketidakadilan dalam penegakan hukum."
+            }
+        ];
+        
+        let availableQuestions = [];
+
+        // --- GAME ENTITIES ---
+        const keys = { left: false, right: false, shoot: false };
+
+        class Player {
+            constructor() {
+                this.w = 80;
+                this.h = 80;
+                this.x = 100;
+                this.y = GH - 150 - this.h;
+                this.vx = 0;
+                this.speed = 8;
+                this.emoji = '🧑‍🎓';
+                this.shootCooldown = 0;
+            }
+            update() {
+                if (keys.left) this.vx = -this.speed;
+                else if (keys.right) this.vx = this.speed;
+                else this.vx = 0;
+
+                this.x += this.vx;
+
+                // boundaries
+                if (this.x < 50) this.x = 50;
+                if (this.x > GW / 2) this.x = GW / 2; // Don't let player go past middle
+
+                if (this.shootCooldown > 0) this.shootCooldown--;
+                
+                if (keys.shoot && this.shootCooldown <= 0) {
+                    bullets.push(new Bullet(this.x + this.w, this.y + this.h/2));
+                    sfx.shoot();
+                    this.shootCooldown = 20; // limit fire rate
+                    keys.shoot = false; // require multiple presses or hold? Let's do tap
+                }
+            }
+            draw() {
+                ctx.font = '80px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText(this.emoji, this.x, this.y);
+            }
+        }
+
+        class Bullet {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y - 10;
+                this.w = 30;
+                this.h = 20;
+                this.vx = 15;
+                this.active = true;
+            }
+            update() {
+                this.x += this.vx;
+                if (this.x > GW) this.active = false;
+            }
+            draw() {
+                ctx.font = '30px Arial';
+                ctx.fillText('💧', this.x, this.y); // using water drop as bullet or pencil ✏️
+            }
+        }
+
+        class Enemy {
+            constructor(level) {
+                this.w = level === 5 ? 150 : 80;
+                this.h = level === 5 ? 150 : 80;
+                this.x = GW + 100;
+                this.y = GH - 150 - this.h;
+                this.vx = level === 5 ? -1.5 : -(2 + level * 0.5);
+                
+                // level 5 is boss
+                this.isBoss = (level === 5);
+                this.hp = this.isBoss ? 3 : 1;
+                
+                const emojis = ['👾', '🧟', '🧛', '🦹'];
+                this.emoji = this.isBoss ? '👹' : emojis[(level-1) % emojis.length];
+                this.active = true;
+                this.bob = 0;
+            }
+            update() {
+                this.x += this.vx;
+                this.bob += 0.1;
+                this.y = (GH - 150 - this.h) + Math.sin(this.bob) * 10;
+                
+                // If enemy passes player, hurt player? Let's just reset enemy position for simpler mechanics
+                if (this.x < -100) {
+                    this.active = false;
+                    // stats.lives--;
+                    // checkGameOver();
+                }
+            }
+            draw() {
+                ctx.font = `${this.w}px Arial`;
+                ctx.fillText(this.emoji, this.x, this.y);
+                
+                // Boss HP Bar
+                if (this.isBoss) {
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(this.x, this.y - 20, this.w, 10);
+                    ctx.fillStyle = 'green';
+                    ctx.fillRect(this.x, this.y - 20, (this.w / 3) * this.hp, 10);
+                }
+            }
+        }
+
+        let player, bullets, enemies;
+        let enemySpawnTimer = 0;
+        let enemiesKilledInLevel = 0;
+        const enemiesPerLevel = 5;
+        let currentHitEnemy = null; // reference to enemy hit by bullet
+
+        const levelNames = [
+            "1 - Gerbang Anekdot",
+            "2 - Kota Struktur",
+            "3 - Hutan Sindiran",
+            "4 - Benteng Bahasa",
+            "5 - BOSS RAJA ANEKDOT"
+        ];
+
+        function initLevel() {
+            bullets = [];
+            enemies = [];
+            enemySpawnTimer = 100;
+            enemiesKilledInLevel = 0;
+            updateHUD();
+        }
+
+        function checkCollisions() {
+            for (let i = 0; i < bullets.length; i++) {
+                let b = bullets[i];
+                if (!b.active) continue;
+                
+                for (let j = 0; j < enemies.length; j++) {
+                    let e = enemies[j];
+                    if (!e.active) continue;
+                    
+                    // Simple AABB
+                    if (b.x < e.x + e.w && b.x + b.w > e.x &&
+                        b.y < e.y + e.h && b.y + b.h > e.y) {
+                        
+                        b.active = false;
+                        sfx.hit();
+                        
+                        // Trigger Question
+                        currentHitEnemy = e;
+                        triggerQuestion();
+                        return; // pause processing
+                    }
+                }
+            }
+        }
+
+        function spawnEnemies() {
+            if (enemies.length === 0 && enemiesKilledInLevel < enemiesPerLevel && !enemies.some(e => e.isBoss)) {
+                enemySpawnTimer--;
+                if (enemySpawnTimer <= 0) {
+                    enemies.push(new Enemy(stats.level));
+                    enemySpawnTimer = 120 - (stats.level * 10); // faster spawn each level
+                }
+            }
+        }
+
+        function triggerQuestion() {
+            currentState = STATE.QUESTION;
+            keys.left = false; keys.right = false; // stop moving
+            
+            if (availableQuestions.length === 0) {
+                availableQuestions = [...questionBank]; // reset if empty
+            }
+            
+            const rIndex = Math.floor(Math.random() * availableQuestions.length);
+            const qData = availableQuestions.splice(rIndex, 1)[0];
+            
+            document.getElementById('menu-question').classList.remove('hidden');
+            document.getElementById('q-text').innerText = qData.q;
+            
+            const passage = document.getElementById('q-passage');
+            if (qData.p) {
+                passage.innerText = qData.p;
+                passage.classList.remove('hidden');
+            } else {
+                passage.classList.add('hidden');
+            }
+            
+            const optContainer = document.getElementById('q-options');
+            optContainer.innerHTML = '';
+            
+            qData.opt.forEach((optText, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'answer-btn';
+                btn.innerText = optText;
+                btn.onclick = () => handleAnswer(index, qData);
+                optContainer.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selectedIndex, qData) {
+            document.getElementById('menu-question').classList.add('hidden');
+            document.getElementById('menu-explanation').classList.remove('hidden');
+            
+            const isCorrect = (selectedIndex === qData.ans);
+            const expTitle = document.getElementById('exp-title');
+            const expSub = document.getElementById('exp-subtitle');
+            
+            document.getElementById('exp-text').innerText = qData.exp;
+            
+            if (isCorrect) {
+                sfx.correct();
+                stats.score += 100;
+                stats.correct++;
+                expTitle.innerText = "🎯 TEPAT!";
+                expTitle.className = "text-3xl mb-2 heading-font text-green-400";
+                
+                if (currentHitEnemy.isBoss) {
+                    currentHitEnemy.hp--;
+                    if (currentHitEnemy.hp <= 0) {
+                        currentHitEnemy.active = false;
+                        expSub.innerText = "BOSS terkena serangan telak dan hancur!";
+                    } else {
+                        expSub.innerText = `BOSS terkena serangan! Sisa HP: ${currentHitEnemy.hp}`;
+                    }
+                } else {
+                    currentHitEnemy.active = false;
+                    expSub.innerText = "Musuh berhasil dikalahkan! +100 Skor";
+                    enemiesKilledInLevel++;
+                }
+            } else {
+                sfx.wrong();
+                stats.lives--;
+                stats.wrong++;
+                expTitle.innerText = "💥 SALAH!";
+                expTitle.className = "text-3xl mb-2 heading-font text-red-500";
+                expSub.innerText = "Aduh, serangan meleset. Nyawa berkurang 1.";
+            }
+            
+            updateHUD();
+            currentState = STATE.EXPLANATION;
+        }
+
+        function resumeAfterQuestion() {
+            document.getElementById('menu-explanation').classList.add('hidden');
+            
+            if (stats.lives <= 0) {
+                showGameOver(false);
+                return;
+            }
+            
+            if (stats.level === 5 && currentHitEnemy && currentHitEnemy.isBoss && currentHitEnemy.hp <= 0) {
+                // Boss dead -> Victory
+                stats.score += 500; // boss bonus
+                showGameOver(true);
+                return;
+            }
+            
+            if (enemiesKilledInLevel >= enemiesPerLevel && stats.level < 5) {
+                // Level Complete
+                sfx.levelUp();
+                stats.level++;
+                initLevel();
+            }
+            
+            currentState = STATE.PLAYING;
+        }
+
+        function updateHUD() {
+            let hearts = '';
+            for(let i=0; i<Math.max(0, stats.lives); i++) hearts += '❤️';
+            document.getElementById('lives-display').innerText = hearts || '💀';
+            document.getElementById('score-display').innerText = `SKOR: ${stats.score}`;
+            document.getElementById('level-display').innerText = `LEVEL: ${levelNames[stats.level-1]}`;
+        }
+
+        let bgOffset = 0;
+        function drawBackground() {
+            // Sky is handled by canvas css background
+            ctx.clearRect(0, 0, GW, GH);
+            
+            // Draw ground
+            ctx.fillStyle = '#4ade80'; // grass
+            ctx.fillRect(0, GH - 150, GW, 150);
+            
+            // Draw some parallax scenery (mountains)
+            ctx.fillStyle = '#94a3b8';
+            for(let i=0; i<5; i++) {
+                ctx.beginPath();
+                ctx.moveTo((i * 400) - (bgOffset * 0.2) % 400, GH - 150);
+                ctx.lineTo((i * 400) + 200 - (bgOffset * 0.2) % 400, GH - 400);
+                ctx.lineTo((i * 400) + 400 - (bgOffset * 0.2) % 400, GH - 150);
+                ctx.fill();
+            }
+            
+            // Draw some trees
+            ctx.fillStyle = '#166534';
+            for(let i=0; i<10; i++) {
+                ctx.fillRect((i * 200) - (bgOffset * 0.5) % 200, GH - 200, 30, 100);
+                ctx.beginPath();
+                ctx.arc((i * 200) + 15 - (bgOffset * 0.5) % 200, GH - 220, 50, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+
+        function gameLoop() {
+            if (currentState === STATE.PLAYING) {
+                bgOffset++;
+                
+                player.update();
+                
+                bullets.forEach(b => b.update());
+                bullets = bullets.filter(b => b.active);
+                
+                enemies.forEach(e => e.update());
+                enemies = enemies.filter(e => e.active);
+                
+                spawnEnemies();
+                checkCollisions();
+            }
+
+            // Always draw if not in main menu
+            if (currentState !== STATE.MENU) {
+                drawBackground();
+                if(player) player.draw();
+                if(bullets) bullets.forEach(b => b.draw());
+                if(enemies) enemies.forEach(e => e.draw());
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById('player-name').value;
+            if (!nameInput.trim()) {
+                alert("Harap masukkan nama!");
+                return;
+            }
+            playerInfo.name = nameInput;
+            playerInfo.class = document.getElementById('player-class').value;
+            playerInfo.school = document.getElementById('player-school').value;
+
+            initAudio();
+            document.getElementById('menu-start').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('controls').classList.remove('hidden');
+            
+            stats = { score: 0, lives: 3, level: 1, correct: 0, wrong: 0 };
+            availableQuestions = [...questionBank];
+            
+            player = new Player();
+            initLevel();
+            
+            currentState = STATE.PLAYING;
+        }
+
+        function pauseGame() {
+            if (currentState === STATE.PLAYING) {
+                currentState = STATE.PAUSED;
+                document.getElementById('menu-pause').classList.remove('hidden');
+            }
+        }
+
+        function resumeGame() {
+            document.getElementById('menu-pause').classList.add('hidden');
+            currentState = STATE.PLAYING;
+        }
+
+        function returnToMain() {
+            document.getElementById('menu-pause').classList.add('hidden');
+            document.getElementById('menu-result').classList.add('hidden');
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('controls').classList.add('hidden');
+            document.getElementById('menu-start').classList.remove('hidden');
+            currentState = STATE.MENU;
+        }
+
+        function resetGame() {
+            document.getElementById('menu-result').classList.add('hidden');
+            startGame(); // uses already filled inputs
+        }
+
+        function showInstructions() {
+            document.getElementById('menu-instructions').classList.remove('hidden');
+        }
+        function hideInstructions() {
+            document.getElementById('menu-instructions').classList.add('hidden');
+        }
+
+        function getRank(acc) {
+            if (acc >= 90) return "MASTER ANEKDOT 👑";
+            if (acc >= 80) return "PEMBURU ANEKDOT 🏹";
+            if (acc >= 70) return "PETUALANG ANEKDOT 🚶";
+            return "PEMULA ANEKDOT 🐣";
+        }
+
+        function showGameOver(isVictory) {
+            currentState = STATE.GAMEOVER;
+            sfx.gameOver();
+            
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('controls').classList.add('hidden');
+            
+            const menuRes = document.getElementById('menu-result');
+            menuRes.classList.remove('hidden');
+            
+            const title = document.getElementById('res-title');
+            const sub = document.getElementById('res-subtitle');
+            
+            if (isVictory) {
+                title.innerText = "🎉 MISI BERHASIL!";
+                title.className = "text-4xl text-green-400 mb-2 heading-font";
+                sub.innerText = "Selamat! Kamu telah menyelamatkan Negeri Anekdot!";
+            } else {
+                title.innerText = "GAME OVER";
+                title.className = "text-4xl text-red-500 mb-2 heading-font";
+                sub.innerText = "Jangan menyerah, tingkatkan lagi literasimu!";
+            }
+            
+            document.getElementById('res-name').innerText = `${playerInfo.name} (${playerInfo.class})`;
+            document.getElementById('res-score').innerText = stats.score;
+            document.getElementById('res-level').innerText = stats.level;
+            document.getElementById('res-correct').innerText = stats.correct;
+            document.getElementById('res-wrong').innerText = stats.wrong;
+            
+            const total = stats.correct + stats.wrong;
+            const acc = total > 0 ? (stats.correct / total) * 100 : 0;
+            document.getElementById('res-title-rank').innerText = getRank(acc);
+            
+            saveScore();
+        }
+
+        function saveScore() {
+            let scores = JSON.parse(localStorage.getItem('anekdotScores')) || [];
+            scores.push({
+                name: playerInfo.name,
+                cls: playerInfo.class,
+                score: stats.score,
+                date: new Date().toLocaleDateString()
+            });
+            // Sort desc
+            scores.sort((a, b) => b.score - a.score);
+            scores = scores.slice(0, 10); // Keep top 10
+            localStorage.setItem('anekdotScores', JSON.stringify(scores));
+        }
+
+        function showLeaderboard() {
+            const list = document.getElementById('leaderboard-list');
+            let scores = JSON.parse(localStorage.getItem('anekdotScores')) || [];
+            
+            list.innerHTML = '';
+            if (scores.length === 0) {
+                list.innerHTML = '<p class="text-center text-slate-400 mt-10">Belum ada data skor.</p>';
+            } else {
+                scores.forEach((s, i) => {
+                    let bg = i % 2 === 0 ? 'bg-slate-700' : 'bg-slate-800';
+                    let medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '🔹';
+                    list.innerHTML += `
+                        <div class="flex justify-between items-center p-2 border-b border-slate-600 ${bg}">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">${medal}</span>
+                                <div>
+                                    <div class="font-bold text-yellow-300">${s.name}</div>
+                                    <div class="text-xs text-slate-300">${s.cls} | ${s.date}</div>
+                                </div>
+                            </div>
+                            <div class="font-bold text-lg">${s.score}</div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('menu-leaderboard').classList.remove('hidden');
+        }
+
+        function hideLeaderboard() {
+            document.getElementById('menu-leaderboard').classList.add('hidden');
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // Keyboard fallback
+        window.addEventListener('keydown', (e) => {
+            if (currentState !== STATE.PLAYING) return;
+            if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd') keys.right = true;
+            if (e.key === ' ' || e.key === 'Enter') keys.shoot = true;
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+        });
+
+        // Touch Controls
+        function setupTouchControl(btnId, keyName) {
+            const btn = document.getElementById(btnId);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+            // prevent stuck keys if dragged off
+            btn.addEventListener('touchcancel', (e) => { e.preventDefault(); keys[keyName] = false; });
+        }
+        
+        setupTouchControl('btn-left', 'left');
+        setupTouchControl('btn-right', 'right');
+        setupTouchControl('btn-shoot', 'shoot');
+        
+        // Prevent default zoom on double tap for ui buttons
+        document.querySelectorAll('button').forEach(b => {
+            b.addEventListener('touchstart', (e) => {
+               if(!b.classList.contains('control-btn')) {
+                   // Allow standard click processing for UI, just stop double-tap zooming on container
+               }
+            }, {passive: true});
+        });
+
+        // Start Game Loop
+        requestAnimationFrame(gameLoop);
+
+    </script>
+</body>
+</html>
